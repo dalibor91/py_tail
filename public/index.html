@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>File tail</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="   crossorigin="anonymous"></script>
+        <style>
+            #content {    
+                padding: 9px;
+                background: #eee;
+                margin-top: 10px;
+                font-family: monospace;
+                overflow-y: auto;
+            }
+            
+            #content .msg {
+                margin-bottom: 7px;
+            }
+            
+            #comd {
+                height: 40px;
+            }
+            
+            #buttons {
+                float: left;
+            }
+            
+            #cmd {
+                float: right;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="comd">
+            <div id="buttons">
+                {% for item in data %}
+                <button data-file="{{ item['file'] }}">{{ item['name'] }}</button>
+                {% end %}
+            </div>  
+            <div id="cmd">
+                <button id="clear-log">Clear</button>
+            </div>
+        </div>
+
+        <div id="info"></div>
+        <div id="content">
+
+        </div>
+        <script>
+            $(document).ready(function() {
+                var url = window.location.hostname,
+                    port = window.location.port,
+                    length = 0;
+                    
+                if (typeof WebSocket == "undefined") {
+                    msg("WebSocket not supported");
+                } else {
+                    
+                    sock = new WebSocket("ws://"+url + ( port ? (":"+port) : "" )+"/socket");
+                    
+                    sock.onmessage = function(ev) {
+                        msg(ev.data);
+                        length+=ev.data.length;
+                    }
+                    
+                }
+                
+                var intval = null, 
+                    curfile = null;
+                
+                $("#buttons button").click(function() {
+                    length = 0;
+                    curfile = $(this).attr("data-file");
+                    sock.send(JSON.stringify({ file : curfile, len: length}));
+                    
+                    clear();
+                    
+                    if (intval !== null) {
+                        clearInterval(intval);
+                    }
+                    
+                    intval = setInterval(function() {
+                        sock.send(JSON.stringify({ file : curfile, len: length}));
+                    }, 1000)
+                }); 
+                
+                $("#clear-log").click(clear);
+                
+                function info(msg) {
+                    $("#info").html(msg);
+                }
+                
+                function msg(msg) {
+                    $("#content").prepend($('<div class="msg">'+msg+'</div>'))
+                }
+                
+                function clear() {
+                    $("#content").empty();
+                }
+                
+                $("#content").height($(window).height() - 40);
+                
+            });
+        </script>
+    </body>
+</html>
+
